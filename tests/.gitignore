@@ -1,0 +1,45 @@
+# --- Python / Flask
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.env
+.env.*           # any env variants
+instance/
+*.sqlite
+*.db
+sliptrack.db
+
+# --- Virtual env
+.venv/
+venv/
+env/
+
+# --- VS Code
+.vscode/
+
+# --- OS junk
+.DS_Store
+Thumbs.db
+
+# --- Build / dist
+build/
+dist/
+*.log
+
+# --- App uploads (keep repo light)
+sliptrack/static/uploads/
+sliptrack/static/thumbs/
+
+# --- Tesseract artifacts (if any)
+tessdata/
+
+# --- Node/npm if added later
+node_modules/
+
+# --- Coverage
+.coverage
+htmlcov/
+

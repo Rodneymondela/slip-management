@@ -1,0 +1,9 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h2 class="text-xl font-semibold mb-4">Register</h2>
+<form method="post" class="bg-white p-4 rounded shadow max-w-md">
+  <label class="block mb-2">Email <input name="email" class="border p-2 w-full"></label>
+  <label class="block mb-4">Password <input type="password" name="password" class="border p-2 w-full"></label>
+  <button class="bg-blue-600 text-white px-4 py-2 rounded">Create account</button>
+</form>
+{% endblock %}

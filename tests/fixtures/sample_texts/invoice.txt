@@ -1,0 +1,8 @@
+TAX INVOICE
+Acme Services (Pty) Ltd
+Invoice No: INV-2025-001
+Date: 2025-09-10
+Subtotal R 2,000.00
+VAT 15% R 300.00
+Amount Due R 2,300.00
+EFT

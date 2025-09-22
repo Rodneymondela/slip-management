@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SlipTrack</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<nav class="bg-white shadow mb-6">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex gap-4">
+    <a class="font-semibold" href="/">Dashboard</a>
+    <a href="/upload">Upload</a>
+    <a href="/journal">Journal</a>
+    <a href="/reports/monthly">Reports</a>
+    <a href="/rules">Rules</a>
+    <form class="ml-auto" action="/auth/logout" method="post">
+      <button class="text-red-600">Logout</button>
+    </form>
+  </div>
+</nav>
+<main class="max-w-7xl mx-auto px-4">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="mb-4 space-y-2">
+        {% for cat, msg in messages %}
+          <div class="p-3 rounded {{ 'bg-green-100' if cat=='success' else 'bg-red-100' }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

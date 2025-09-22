@@ -1,0 +1,19 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h2 class="text-xl font-semibold mb-4">Entry #{{ entry.id }}</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div class="bg-white rounded shadow p-2">
+    {% if doc and doc.thumbnail_path %}
+      <img src="/{{ doc.thumbnail_path }}" alt="document" class="w-full">
+    {% else %}
+      <div class="p-8 text-gray-500">No image</div>
+    {% endif %}
+  </div>
+  <div class="bg-white rounded shadow p-4">
+    <form method="post">
+      <label class="block mb-2">Supplier <input name="supplier_name" value="{{ entry.supplier_name }}" class="border p-2 w-full"></label>
+      <button class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

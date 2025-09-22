@@ -1,0 +1,10 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Welcome to SlipTrack</h1>
+<p class="mb-4">Recent uploads and monthly totals will appear here.</p>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div class="p-4 bg-white rounded shadow">Uploads</div>
+  <div class="p-4 bg-white rounded shadow">This Month Total</div>
+  <div class="p-4 bg-white rounded shadow">VAT Total</div>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h2 class="text-xl font-semibold mb-4">Journal</h2>
+<form method="get" class="flex gap-2 mb-3">
+  <input class="border p-2" name="supplier" placeholder="Supplier" value="{{ request.args.get('supplier','') }}">
+  <button class="bg-gray-800 text-white px-3 rounded">Filter</button>
+</form>
+<table class="min-w-full bg-white rounded shadow">
+  <thead><tr class="text-left">
+    <th class="p-2">Date</th><th class="p-2">Supplier</th><th class="p-2">Category</th>
+    <th class="p-2">Payment</th><th class="p-2">Total (R)</th><th class="p-2">Actions</th>
+  </tr></thead>
+  <tbody>
+  {% for e in entries %}
+    <tr class="border-t">
+      <td class="p-2">{{ e.entry_date }}</td>
+      <td class="p-2">{{ e.supplier_name }}</td>
+      <td class="p-2">{{ e.category or '—' }}</td>
+      <td class="p-2">{{ e.payment_method }}</td>
+      <td class="p-2">{{ e.total_amount }}</td>
+      <td class="p-2">
+        <a class="text-blue-600" href="/journal/{{e.id}}">View</a>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
