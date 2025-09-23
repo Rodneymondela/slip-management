@@ -9,6 +9,7 @@ class BaseConfig:
     MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB
     WTF_CSRF_TIME_LIMIT = None
     SESSION_COOKIE_SAMESITE = "Lax"
+    VAT_RATE = float(os.environ.get("VAT_RATE", 0.15))
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True

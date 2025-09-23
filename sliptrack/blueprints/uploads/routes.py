@@ -78,10 +78,25 @@ def confirm():
         # Basic validations
         if entry.total_amount is not None and entry.total_amount < 0:
             raise ValueError("Total amount cannot be negative")
-        # TODO: duplicate detection & rules application
-        db.session.add(entry); db.session.commit()
+
+        # Duplicate detection
+        duplicate = JournalEntry.query.filter_by(
+            user_id=current_user.id,
+            supplier_name=entry.supplier_name,
+            total_amount=entry.total_amount,
+            entry_date=entry.entry_date
+        ).first()
+        if duplicate:
+            flash('This looks like a duplicate entry.', 'warning')
+
+        # TODO: rules application
+        db.session.add(entry)
+        db.session.commit()
         flash('Saved to journal', 'success')
         return redirect(url_for('journal.list_journal'))
+    except (ValueError, TypeError) as e:
+        flash(f'Error saving: Invalid data format. Please check the fields. ({e})', 'error')
+        return redirect(url_for('uploads.upload'))
     except Exception as e:
-        flash(f'Error saving: {e}', 'error')
+        flash(f'An unexpected error occurred: {e}', 'error')
         return redirect(url_for('uploads.upload'))
