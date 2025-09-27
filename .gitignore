@@ -1,44 +1,28 @@
-# Python / Flask
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.egg-info/
-.pytest_cache/
-.env
-.env.*
-instance/
-*.sqlite
-*.db
-sliptrack.db
+*.py[cod]
+*$py.class
 
-# Virtual env
+# Environments
 .venv/
 venv/
+ENV/
 env/
+.env
 
-# VS Code
+# Instance Folder
+instance/
+
+# Database
+*.db
+*.sqlite3
+
+# IDEs and Editors
 .vscode/
+.idea/
+*.swp
+*.swo
 
-# OS junk
+# Other
 .DS_Store
-Thumbs.db
-
-# Build / dist / logs
-build/
-dist/
 *.log
-
-# App uploads (keep repo light)
-sliptrack/static/uploads/
-sliptrack/static/thumbs/
-
-# Tesseract (if any)
-tessdata/
-
-# Node (if added later)
-node_modules/
-
-# Coverage
-.coverage
-htmlcov/

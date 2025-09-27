@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Processing Document{% endblock %}
+
+{% block content %}
+<div class="container mx-auto mt-10 text-center">
+    <h1 class="text-2xl font-bold mb-4">We're processing your document!</h1>
+    <p class="text-gray-600 mb-6">Please wait a moment. This page will automatically redirect you when it's ready.</p>
+
+    <div id="spinner" class="flex items-center justify-center space-x-2">
+        <div class="w-8 h-8 border-4 border-blue-500 border-solid rounded-full animate-spin border-t-transparent"></div>
+        <span class="text-lg">Processing...</span>
+    </div>
+
+    <div id="status-container" data-task-id="{{ doc.task_id }}" data-doc-id="{{ doc.id }}"></div>
+
+    <div id="error-message" class="hidden mt-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+        <p class="font-bold">An error occurred:</p>
+        <p id="error-text"></p>
+        <a href="{{ url_for('uploads.confirm_get', doc_id=doc.id) }}" class="mt-2 inline-block text-blue-500 hover:underline">Please try filling it out manually.</a>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusContainer = document.getElementById('status-container');
+    const taskId = statusContainer.dataset.taskId;
+    const docId = statusContainer.dataset.docId;
+
+    if (!taskId) {
+        console.error('No task ID found.');
+        return;
+    }
+
+    const pollStatus = () => {
+        fetch(`/task_status/${taskId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.state === 'SUCCESS') {
+                    // Task is done, redirect to the confirmation page
+                    window.location.href = data.redirect_url;
+                } else if (data.state === 'FAILURE') {
+                    // Task failed, show an error message
+                    document.getElementById('spinner').classList.add('hidden');
+                    const errorDiv = document.getElementById('error-message');
+                    const errorText = document.getElementById('error-text');
+                    errorText.textContent = data.error || 'An unknown error occurred during processing.';
+                    errorDiv.classList.remove('hidden');
+                } else {
+                    // Task is still pending or in progress, poll again after 2 seconds
+                    setTimeout(pollStatus, 2000);
+                }
+            })
+            .catch(err => {
+                console.error('Error polling task status:', err);
+                document.getElementById('spinner').classList.add('hidden');
+                const errorDiv = document.getElementById('error-message');
+                const errorText = document.getElementById('error-text');
+                errorText.textContent = 'Could not check the processing status. Please check back later.';
+                errorDiv.classList.remove('hidden');
+            });
+    };
+
+    // Start polling
+    pollStatus();
+});
+</script>
+{% endblock %}
