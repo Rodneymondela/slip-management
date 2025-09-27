@@ -1,28 +1,15 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
+﻿__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Environments
 .venv/
 venv/
-ENV/
-env/
+
+instance/
+sliptrack.db
 .env
 
-# Instance Folder
-instance/
-
-# Database
-*.db
-*.sqlite3
-
-# IDEs and Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Other
 .DS_Store
-*.log
+Thumbs.db
+.vscode/
