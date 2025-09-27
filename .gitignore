@@ -1,15 +1,21 @@
-﻿__pycache__/
+﻿# Python
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 
+# Virtualenv
 .venv/
 venv/
 
+# Flask runtime (db/uploads/config)
 instance/
 sliptrack.db
+
+# Env
 .env
 
+# OS/IDE
 .DS_Store
 Thumbs.db
 .vscode/
