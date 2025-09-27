@@ -1,47 +1,46 @@
-{% extends 'layout.html' %}
+{% extends "base.html" %}
+
+{% block title %}Duplicate Warning{% endblock %}
+
 {% block content %}
-<h2 class="text-2xl font-semibold mb-4">Possible Duplicate Detected</h2>
+<main class="container mx-auto mt-10 p-4">
+    <div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md">
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
+            <h1 class="font-bold text-xl">Duplicate Warning</h1>
+            <p>This entry looks very similar to one or more existing entries in your journal. Please review before saving.</p>
+        </div>
 
-<p class="mb-4 text-gray-700">
-We found existing journal entries with the <strong>same supplier</strong>, <strong>similar total</strong>, and a date within <strong>±3 days</strong>.
-Review them below. You can cancel, or <em>Save anyway</em>.
-</p>
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold mb-2">Potential Duplicates Found:</h2>
+            <ul class="list-disc list-inside space-y-2">
+                {% for dup in duplicates %}
+                <li class="p-3 border rounded bg-gray-50">
+                    <span class="font-mono">{{ dup.entry_date.strftime('%Y-%m-%d') }}</span> &mdash;
+                    <span class="font-semibold">{{ dup.supplier_name }}</span> &mdash;
+                    <span class="font-bold text-gray-800">{{ "%.2f"|format(dup.total_amount) }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
 
-<table class="min-w-full bg-white rounded shadow mb-6">
-  <thead>
-    <tr class="text-left">
-      <th class="p-2">Date</th>
-      <th class="p-2">Supplier</th>
-      <th class="p-2">Total (R)</th>
-      <th class="p-2">Category</th>
-      <th class="p-2">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for e in duplicates %}
-    <tr class="border-t">
-      <td class="p-2">{{ e.entry_date }}</td>
-      <td class="p-2">{{ e.supplier_name }}</td>
-      <td class="p-2">{{ "%.2f"|format(e.total_amount or 0) }}</td>
-      <td class="p-2">{{ e.category or '—' }}</td>
-      <td class="p-2">
-        <a class="text-blue-600 underline" href="{{ url_for('journal.detail', entry_id=e.id) }}">View</a>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+        <form action="{{ url_for('uploads.confirm') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="override_duplicate" value="true">
 
-<form method="post" action="{{ url_for('uploads.confirm') }}" class="bg-white rounded shadow p-4">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  {% for k, v in post_fields.items() %}
-    <input type="hidden" name="{{ k }}" value="{{ v }}">
-  {% endfor %}
-  <input type="hidden" name="override_duplicate" value="1">
+            {# Carry over all the form fields the user already filled in #}
+            {% for key, value in post_fields.items() %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endfor %}
 
-  <div class="flex gap-3">
-    <a href="{{ url_for('uploads.upload') }}" class="px-4 py-2 rounded border">Cancel</a>
-    <button class="bg-yellow-600 text-white px-4 py-2 rounded">Save anyway</button>
-  </div>
-</form>
+            <p class="mb-4">Do you want to ignore this warning and save the entry anyway?</p>
+
+            <div class="flex items-center space-x-4">
+                <button type="submit" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 transition">
+                    Save Anyway
+                </button>
+                <a href="{{ url_for('journal.list_journal') }}" class="text-gray-600 hover:text-gray-800">Cancel</a>
+            </div>
+        </form>
+    </div>
+</main>
 {% endblock %}

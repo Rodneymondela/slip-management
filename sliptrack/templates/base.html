@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SlipTrack{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1e40af', // A deep blue
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full font-sans text-gray-800 antialiased">
+  <div class="flex flex-col min-h-screen">
+    <header class="bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-10">
+      <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <a class="text-2xl font-bold text-primary" href="{{ url_for('dashboard') }}">
+            SlipTrack
+          </a>
+          <div class="flex items-center space-x-4">
+            {% if current_user.is_authenticated %}
+              <a href="{{ url_for('journal.list_journal') }}" class="text-gray-600 hover:text-primary transition-colors">Journal</a>
+              <a href="{{ url_for('uploads.upload') }}" class="text-gray-600 hover:text-primary transition-colors">Upload</a>
+              <a href="{{ url_for('auth.logout') }}" class="text-gray-600 hover:text-primary transition-colors">Logout</a>
+            {% else %}
+              <a href="{{ url_for('auth.login') }}" class="text-gray-600 hover:text-primary transition-colors">Login</a>
+              <a href="{{ url_for('auth.register') }}" class="ml-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Register
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="max-w-4xl mx-auto mb-6">
+            {% for category, message in messages %}
+              <div class="p-4 rounded-md
+                {% if category == 'error' %} bg-red-100 border border-red-300 text-red-800
+                {% elif category == 'success' %} bg-green-100 border border-green-300 text-green-800
+                {% else %} bg-blue-100 border border-blue-300 text-blue-800 {% endif %}"
+                role="alert">
+                <p class="font-medium">{{ message }}</p>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <div class="max-w-6xl mx-auto">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+    <footer class="bg-white mt-12 py-4 text-center text-sm text-gray-500 border-t">
+        <p>&copy; {{ now().year }} SlipTrack. All rights reserved.</p>
+    </footer>
+  </div>
+</body>
+</html>

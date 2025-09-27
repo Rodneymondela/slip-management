@@ -1,5 +1,90 @@
-<form method="post" action="{{ url_for('uploads.upload') }}" enctype="multipart/form-data" class="bg-white p-6 rounded shadow">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <input type="file" name="file" accept="image/*,application/pdf" capture="environment" class="mb-4" required>
-  <button class="bg-blue-600 text-white px-4 py-2 rounded">Upload</button>
-</form>
+{% extends 'base.html' %}
+
+{% block title %}Upload - SlipTrack{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <div class="text-center">
+    <h2 class="text-3xl font-extrabold text-gray-900">Upload a new document</h2>
+    <p class="mt-2 text-sm text-gray-600">
+      Upload an image (PNG, JPG) or a PDF file of your receipt or invoice.
+    </p>
+  </div>
+
+  <form method="post" action="{{ url_for('uploads.upload') }}" enctype="multipart/form-data" class="mt-8" id="upload-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md" id="drop-zone">
+      <div class="space-y-1 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <div class="flex text-sm text-gray-600">
+          <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-blue-800 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+            <span>Upload a file</span>
+            <input id="file-upload" name="file" type="file" class="sr-only" accept="image/*,application/pdf" required>
+          </label>
+          <p class="pl-1">or drag and drop</p>
+        </div>
+        <p class="text-xs text-gray-500">
+          PNG, JPG, PDF up to 10MB
+        </p>
+        <p id="file-name" class="text-sm font-medium text-gray-900 pt-2"></p>
+      </div>
+    </div>
+
+    <div class="mt-6 text-center">
+      <button type="submit" id="submit-button" class="group relative w-full sm:w-auto flex justify-center py-2 px-8 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400">
+        <span class="absolute left-0 inset-y-0 flex items-center pl-3" id="spinner" style="display: none;">
+          <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </span>
+        Upload Document
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-upload');
+  const fileNameDisplay = document.getElementById('file-name');
+  const uploadForm = document.getElementById('upload-form');
+  const submitButton = document.getElementById('submit-button');
+  const spinner = document.getElementById('spinner');
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('border-primary', 'bg-blue-50');
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('border-primary', 'bg-blue-50');
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('border-primary', 'bg-blue-50');
+    if (e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      fileNameDisplay.textContent = fileInput.files[0].name;
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) {
+          fileNameDisplay.textContent = fileInput.files[0].name;
+      } else {
+          fileNameDisplay.textContent = '';
+      }
+  });
+
+  uploadForm.addEventListener('submit', () => {
+    submitButton.disabled = true;
+    spinner.style.display = 'block';
+    submitButton.querySelector('span:not(#spinner)').textContent = 'Uploading...';
+  });
+</script>
+{% endblock %}

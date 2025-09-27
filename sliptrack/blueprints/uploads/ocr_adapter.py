@@ -2,6 +2,7 @@ import os
 import re
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple, List
+from dateutil import parser as date_parser
 
 import cv2
 import numpy as np
@@ -15,21 +16,6 @@ class OcrAdapter:
     """
 
     def __init__(self) -> None:
-        # Point pytesseract to exe via .env or common Windows paths
-        cmd = os.getenv("TESSERACT_CMD")
-        candidates: List[str] = []
-        if cmd:
-            candidates.append(cmd)
-        if os.name == "nt":
-            candidates += [
-                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-                r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-            ]
-        for c in candidates:
-            if c and os.path.exists(c):
-                pytesseract.pytesseract.tesseract_cmd = c
-                break
-
         # Language(s). You can set TESS_LANG=eng+afr in .env if helpful.
         self.lang = os.getenv("TESS_LANG", "eng")
 
@@ -90,70 +76,45 @@ class OcrAdapter:
         th = self._adaptive(cla)
         return th
 
-    # ---------- OCR + scoring ----------
-
-    def _ocr_data(self, img: np.ndarray, config: str):
-        return pytesseract.image_to_data(
-            img, lang=self.lang, config=config, output_type=pytesseract.Output.DICT
-        )
-
-    @staticmethod
-    def _avg_conf(data) -> float:
-        confs = [int(c) for c in data["conf"] if c != "-1"]
-        return (sum(confs) / len(confs)) if confs else 0.0
-
-    def _reconstruct_lines(self, data, min_conf: int) -> List[str]:
-        lines: Dict[tuple, List[str]] = {}
-        n = len(data["text"])
-        for i in range(n):
-            if data["text"][i] and data["text"][i].strip() and data["conf"][i] != "-1":
-                c = int(data["conf"][i])
-                if c >= min_conf:
-                    key = (data["page_num"][i], data["block_num"][i], data["par_num"][i], data["line_num"][i])
-                    lines.setdefault(key, []).append(data["text"][i])
-        ordered = sorted(lines.items(), key=lambda kv: kv[0])
-        return [" ".join(words) for _, words in ordered]
+    # ---------- OCR ----------
 
     def extract_text(self, image_or_path) -> str:
-        # Accept path or preprocessed array
-        base = self.preprocess(image_or_path) if isinstance(image_or_path, str) else image_or_path
-
-        variants = [
-            base,
-            self._adaptive(self._clahe(base)),
-            self._adaptive(self._scale(base, 1.7)),
-            self._adaptive(self._scale(base, 1.3)),
-        ]
-        cfgs = ["--oem 1 --psm 6", "--oem 1 --psm 4", "--oem 1 --psm 7", "--oem 1 --psm 11"]
-
-        best = {"score": -1.0, "data": None, "cfg": None}
-        for im in variants:
-            for cfg in cfgs:
-                try:
-                    data = self._ocr_data(im, cfg)
-                    score = self._avg_conf(data)
-                    if score > best["score"]:
-                        best = {"score": score, "data": data, "cfg": cfg}
-                except Exception:
-                    continue
-
-        # Build filtered text; if too short, fall back to full strings
-        if best["data"]:
-            filtered_lines = self._reconstruct_lines(best["data"], self.min_conf)
-            filtered_text = "\n".join(filtered_lines).strip()
-            if len(filtered_text) >= 20:  # good enough
-                return filtered_text
-
-        # Strong fallback: run full image_to_string on best variant with common PSMs
-        for cfg in ("--oem 1 --psm 6", "--oem 1 --psm 4"):
+        """
+        Extracts text from a preprocessed image array or an image path.
+        This simplified method uses a single, robust Tesseract configuration for speed.
+        """
+        # If a path is provided, preprocess it. Otherwise, assume it's a preprocessed numpy array.
+        if isinstance(image_or_path, str):
             try:
-                t = pytesseract.image_to_string(base, lang=self.lang, config=cfg).strip()
-                if len(t) >= 10:
-                    return t
-            except Exception:
-                pass
+                processed_img = self.preprocess(image_or_path)
+            except ValueError:
+                # Could not read image, etc.
+                return ""
+        else:
+            processed_img = image_or_path
 
-        return ""  # last resort
+        # Use a reliable Page Segmentation Mode for receipts/invoices.
+        # PSM 4: Assume a single column of text of variable sizes. Good general default.
+        config = "--oem 3 --psm 4"
+
+        try:
+            text = pytesseract.image_to_string(
+                processed_img, lang=self.lang, config=config
+            ).strip()
+
+            # If text is very short, it might be noise. A fallback can be useful.
+            if len(text) < 20:
+                # PSM 6 is another common choice for blocks of text.
+                config_fallback = "--oem 3 --psm 6"
+                fallback_text = pytesseract.image_to_string(
+                    processed_img, lang=self.lang, config=config_fallback
+                ).strip()
+                if len(fallback_text) > len(text):
+                    return fallback_text
+            return text
+        except Exception:
+            # If any Tesseract error occurs, return an empty string.
+            return ""
 
     # ---------- parsing ----------
 
@@ -183,46 +144,55 @@ class OcrAdapter:
 
         # Date
         entry_date: Optional[str] = None
-        for pat in (r"(\d{4}[-/]\d{2}[-/]\d{2})",
-                    r"(\d{2}[-/]\d{2}[-/]\d{4})",
-                    r"(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})"):
-            m = re.search(pat, joined)
-            if m:
-                raw_d = m.group(1)
-                for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%d-%m-%Y", "%d/%m/%Y", "%d %b %Y"):
-                    try:
-                        entry_date = datetime.strptime(raw_d, fmt).date().isoformat()
-                        break
-                    except Exception:
-                        pass
-                if entry_date:
-                    break
+        try:
+            # Use a regex to find plausible date-like strings first
+            # This avoids dateutil trying to parse random numbers
+            date_pattern = r"\b(\d{1,4}[-/. ]\d{1,2}[-/. ]\d{1,4}|\d{1,2}\s+[A-Za-z]{3,}\s+\d{2,4})\b"
+            matches = re.findall(date_pattern, joined)
+            for match in matches:
+                try:
+                    # dayfirst=True is a safe bet for many receipts
+                    parsed_date = date_parser.parse(match, dayfirst=True).date()
+                    entry_date = parsed_date.isoformat()
+                    break  # Stop after the first successful parse
+                except (date_parser.ParserError, TypeError, ValueError):
+                    continue
+        except Exception:
+            pass  # Ignore if regex or parsing fails entirely
         if not entry_date:
             entry_date = datetime.today().date().isoformat()
+
+        # A more robust regex for monetary values that handles thousands separators
+        money_pattern = r"\b\d{1,3}(?:[.,]\d{3})*[.,]\d{2}\b"
 
         # Totals (prefer explicit lines)
         total = None
         for ln in reversed(lines):
             if re.search(r"(total|amount\s*due|grand\s*total)", ln, re.I):
-                m = re.findall(r"([0-9]+[\.,][0-9]{2})", ln)
+                m = re.findall(money_pattern, ln)
                 if m:
-                    total = self._num(m[-1]); break
+                    total = self._num(m[-1])
+                    break
         if total is None:
-            m = re.findall(r"([0-9]+[\.,][0-9]{2})", joined)
+            m = re.findall(money_pattern, joined)
             if m:
-                total = self._num(m[-1])
+                # Fallback to the largest monetary value in the text
+                all_nums = sorted([self._num(v) for v in m if self._num(v) is not None], reverse=True)
+                if all_nums:
+                    total = all_nums[0]
 
         vat_amount = None
         for ln in lines:
-            if re.search(r"\b(vat|tax)\b", ln, re.I):
-                m = re.findall(r"([0-9]+[\.,][0-9]{2})", ln)
+            # Avoid matching the total amount again if it's on the same line as "VAT"
+            if re.search(r"\b(vat|tax)\b", ln, re.I) and not re.search(r"total", ln, re.I):
+                m = re.findall(money_pattern, ln)
                 if m:
                     vat_amount = self._num(m[-1])
 
         subtotal = None
         for ln in lines:
             if re.search(r"(subtotal|sub\s*total)", ln, re.I):
-                m = re.findall(r"([0-9]+[\.,][0-9]{2})", ln)
+                m = re.findall(money_pattern, ln)
                 if m:
                     subtotal = self._num(m[-1])
 
@@ -241,9 +211,18 @@ class OcrAdapter:
 
         # Reference
         ref = ""
-        m = re.search(r"(invoice|receipt|till)\s*(no|#|num|number)?\s*[:\-]?\s*([A-Za-z0-9\-\/]+)", joined, re.I)
-        if m:
-            ref = m.group(3)
+        # Search line-by-line to avoid incorrect cross-line matches.
+        # The pattern looks for common invoice/receipt keywords.
+        pattern = r"(invoice|receipt|till|order|statement)\s*(no|#|num|number)?\s*[:\-#]?\s*([A-Za-z0-9\-/]+)"
+        for ln in lines:
+            m = re.search(pattern, ln, re.I)
+            if m:
+                # Group 3 should contain the reference number.
+                candidate = m.group(3)
+                # A sanity check to avoid using common keywords like 'No' as the reference.
+                if candidate and candidate.lower() not in ['no', 'num', 'number']:
+                    ref = candidate
+                    break  # Found a good candidate, stop searching.
 
         # Derive if only total present and VAT included
         if total is not None and vat_amount is None and subtotal is None:
@@ -267,7 +246,28 @@ class OcrAdapter:
 
     @staticmethod
     def _num(s: str) -> Optional[float]:
+        """
+        Robustly converts a string to a float, handling common European and
+        American-style number formats with thousands separators.
+        """
+        if not s or not isinstance(s, str):
+            return None
+
+        s = s.strip()
+        # Find the last dot or comma, which is the most likely decimal separator
+        last_dot = s.rfind('.')
+        last_comma = s.rfind(',')
+
+        # If a comma appears after the last dot, it's likely a European-style number (e.g., 1.234,56)
+        if last_comma > last_dot:
+            # Remove all dots (thousands separators) and replace the comma with a dot (decimal separator)
+            s = s.replace('.', '').replace(',', '.')
+        else:
+            # Otherwise, it's likely an American-style number (e.g., 1,234.56).
+            # Just remove all commas (thousands separators).
+            s = s.replace(',', '')
+
         try:
-            return float(s.replace(",", "."))
-        except Exception:
+            return float(s)
+        except (ValueError, TypeError):
             return None

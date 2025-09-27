@@ -1,5 +1,8 @@
 import os
 from datetime import date, timedelta, datetime
+import uuid
+from typing import Any, Optional
+from dateutil import parser as date_parser
 from flask import request, render_template, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -10,17 +13,16 @@ from ...extensions import db, limiter
 from ...models.document import Document
 from ...models.journal import JournalEntry
 from . import uploads_bp
-from .ocr_adapter import OcrAdapter
+from ...celery_worker import process_ocr
 
 # Allowed upload extensions
 ALLOWED = {".png", ".jpg", ".jpeg", ".pdf"}
 
 
 def _unique_name(filename: str) -> str:
-    """Generate a filesystem-safe, unique name for the uploaded file."""
-    name, ext = os.path.splitext(secure_filename(filename))
-    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
-    return f"{name}_{ts}{ext.lower()}"
+    """Generate a filesystem-safe, unique name using a UUID."""
+    ext = os.path.splitext(secure_filename(filename))[1].lower()
+    return f"{uuid.uuid4()}{ext}"
 
 
 @uploads_bp.route("", methods=["GET", "POST"])
@@ -58,38 +60,62 @@ def upload():
         try:
             im = Image.open(save_path)
             im.thumbnail((480, 480))
-            thumb_path = os.path.join(current_app.config["THUMB_FOLDER"], fname + ".jpg")
+            # Use the same unique name but with a .jpg extension
+            thumb_fname = os.path.splitext(fname)[0] + ".jpg"
+            thumb_path = os.path.join(current_app.config["THUMB_FOLDER"], thumb_fname)
             os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
             im.convert("RGB").save(thumb_path, "JPEG", quality=85)
         except Exception as e:
             current_app.logger.warning(f"Thumbnail generation failed for {save_path}: {e}")
 
-    # OCR best-effort; store raw text on Document, parse on GET confirm
-    raw_text = ""
-    if ext != ".pdf":  # skip OCR for PDFs for now
-        try:
-            adapter = OcrAdapter()
-            preprocessed = adapter.preprocess(save_path)
-            raw_text = adapter.extract_text(preprocessed)
-        except Exception as e:
-            current_app.logger.exception(f"OCR failed for {save_path}: {e}")
-            flash("OCR failed - please fill in details manually.", "error")
-    else:
-        current_app.logger.info(f"Skipping OCR for PDF: {save_path}")
-
-    # Create Document and commit so we can redirect to a stable GET URL
+    # Create Document record before starting the task
     doc = Document(
         user_id=current_user.id,
         type="receipt",
         file_path=save_path,
         thumbnail_path=thumb_path,
-        ocr_text=raw_text,
-        status="parsed" if raw_text else "needs_review",
+        status="pending",  # New initial status
     )
     db.session.add(doc)
     db.session.commit()
 
-    return redirect(url_for("uploads.confirm_get", doc_id=doc.id))
+    # Launch the background OCR task
+    task = process_ocr.delay(doc.id)
+
+    # Save the task ID to the document
+    doc.task_id = task.id
+    doc.status = "processing"
+    db.session.commit()
+
+    flash("Upload successful! Processing your document now...", "success")
+    return redirect(url_for("uploads.processing_status", doc_id=doc.id))
+
+
+@uploads_bp.route("/processing/<int:doc_id>", methods=["GET"])
+@login_required
+def processing_status(doc_id: int):
+    """
+    Page that shows the status of a processing document.
+    It can poll for updates or simply show the current state.
+    """
+    doc = Document.query.filter_by(id=doc_id, user_id=current_user.id).first_or_404()
+    return render_template("uploads/processing.html", doc=doc)
+
+
+@uploads_bp.route("/task_status/<string:task_id>", methods=["GET"])
+@login_required
+def task_status(task_id: str):
+    """API-like endpoint for fetching a Celery task's status."""
+    task = process_ocr.AsyncResult(task_id)
+    response_data = {"state": task.state}
+    if task.state == "FAILURE":
+        response_data["error"] = str(task.info)  # Exception info
+    elif task.state == "SUCCESS":
+        # If the task is done, find the associated document to get the next URL
+        doc = Document.query.filter_by(task_id=task_id, user_id=current_user.id).first()
+        if doc:
+            response_data["redirect_url"] = url_for("uploads.confirm_get", doc_id=doc.id)
+    return response_data
 
 
 @uploads_bp.route("/confirm/<int:doc_id>", methods=["GET"])
@@ -129,12 +155,26 @@ def confirm_get(doc_id: int):
     return render_template("uploads/confirm.html", parsed=parsed, doc=doc)
 
 
-def _parse_number(v):
+def _parse_number(v: Any) -> Optional[float]:
+    """
+    Robustly converts a string or number to a float, handling common
+    European and American-style number formats.
+    """
     if v is None or v == "":
         return None
+
+    s = str(v).strip()
+    last_dot = s.rfind('.')
+    last_comma = s.rfind(',')
+
+    if last_comma > last_dot:
+        s = s.replace('.', '').replace(',', '.')
+    else:
+        s = s.replace(',', '')
+
     try:
-        return float(str(v).replace(",", "."))
-    except ValueError:
+        return float(s)
+    except (ValueError, TypeError):
         return None
 
 
@@ -185,17 +225,15 @@ def confirm():
             subtotal = round(base, 2)
             vat_amount = round(total - base, 2)
 
-        # Date normalization
+        # Date normalization using dateutil
         entry_date_str = data.get("entry_date") or ""
-        entry_date = None
-        for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%d/%m/%Y", "%d-%m-%Y", "%d %b %Y"):
-            try:
-                entry_date = datetime.strptime(entry_date_str, fmt).date()
-                break
-            except Exception:
-                continue
-        if entry_date is None:
-            entry_date = datetime.fromisoformat(entry_date_str).date()
+        if not entry_date_str:
+            raise ValueError("Date is required")
+        try:
+            # dayfirst=True helps resolve ambiguity for formats like 01/02/2024
+            entry_date = date_parser.parse(entry_date_str, dayfirst=True).date()
+        except (date_parser.ParserError, TypeError):
+            raise ValueError(f"Could not understand date: {entry_date_str}")
 
         # Validations
         if total is not None and total < 0:
