@@ -1,0 +1,47 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h2 class="text-2xl font-semibold mb-4">Possible Duplicate Detected</h2>
+
+<p class="mb-4 text-gray-700">
+We found existing journal entries with the <strong>same supplier</strong>, <strong>similar total</strong>, and a date within <strong>±3 days</strong>.
+Review them below. You can cancel, or <em>Save anyway</em>.
+</p>
+
+<table class="min-w-full bg-white rounded shadow mb-6">
+  <thead>
+    <tr class="text-left">
+      <th class="p-2">Date</th>
+      <th class="p-2">Supplier</th>
+      <th class="p-2">Total (R)</th>
+      <th class="p-2">Category</th>
+      <th class="p-2">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in duplicates %}
+    <tr class="border-t">
+      <td class="p-2">{{ e.entry_date }}</td>
+      <td class="p-2">{{ e.supplier_name }}</td>
+      <td class="p-2">{{ "%.2f"|format(e.total_amount or 0) }}</td>
+      <td class="p-2">{{ e.category or '—' }}</td>
+      <td class="p-2">
+        <a class="text-blue-600 underline" href="{{ url_for('journal.detail', entry_id=e.id) }}">View</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<form method="post" action="{{ url_for('uploads.confirm') }}" class="bg-white rounded shadow p-4">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for k, v in post_fields.items() %}
+    <input type="hidden" name="{{ k }}" value="{{ v }}">
+  {% endfor %}
+  <input type="hidden" name="override_duplicate" value="1">
+
+  <div class="flex gap-3">
+    <a href="{{ url_for('uploads.upload') }}" class="px-4 py-2 rounded border">Cancel</a>
+    <button class="bg-yellow-600 text-white px-4 py-2 rounded">Save anyway</button>
+  </div>
+</form>
+{% endblock %}

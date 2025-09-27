@@ -1,14 +1,18 @@
 {% extends 'layout.html' %}
 {% block content %}
 <h2 class="text-xl font-semibold mb-4">Rules</h2>
-<form method="post" class="bg-white p-4 rounded shadow grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+<form method="post" action="{{ url_for('rules.list_rules') }}" class="bg-white p-4 rounded shadow grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input class="border p-2" name="supplier_match" placeholder="Supplier contains">
   <input class="border p-2" name="text_contains" placeholder="Text contains">
   <input class="border p-2" name="set_category" placeholder="Set category">
-  <label class="flex items-center gap-2"><input type="checkbox" name="set_vat_included"> VAT Included</label>
+  <label class="flex items-center gap-2">
+    <input type="checkbox" name="set_vat_included"> VAT Included
+  </label>
   <input class="border p-2" name="priority" placeholder="Priority (lower runs first)">
   <button class="bg-green-600 text-white px-4 py-2 rounded">Add Rule</button>
 </form>
+
 <table class="min-w-full bg-white rounded shadow">
   <thead><tr><th class="p-2 text-left">Priority</th><th class="p-2 text-left">Supplier</th><th class="p-2 text-left">Text</th><th class="p-2 text-left">Set</th></tr></thead>
   <tbody>

@@ -10,10 +10,14 @@
     {% endif %}
   </div>
   <div class="bg-white rounded shadow p-4">
-    <form method="post">
-      <label class="block mb-2">Supplier <input name="supplier_name" value="{{ entry.supplier_name }}" class="border p-2 w-full"></label>
+    <form method="post" action="{{ url_for('journal.detail', entry_id=entry.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="block mb-2">Supplier
+        <input name="supplier_name" value="{{ entry.supplier_name }}" class="border p-2 w-full">
+      </label>
       <button class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
     </form>
   </div>
 </div>
 {% endblock %}
+

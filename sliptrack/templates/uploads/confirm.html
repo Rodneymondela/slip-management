@@ -1,14 +1,134 @@
 {% extends 'layout.html' %}
 {% block content %}
-<h2 class="text-xl font-semibold mb-4">Confirm Details</h2>
-<form method="post" action="/upload/confirm" class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded shadow">
-  <input type="hidden" name="document_id" value="{{ doc.id }}">
-  {% for k,v in parsed.items() %}
-    <label class="block">
-      <span class="text-sm">{{ k }}</span>
-      <input class="border p-2 w-full" name="{{k}}" value="{{ v if v is not none else '' }}">
+<h2 class="text-2xl font-semibold mb-4">Confirm Details</h2>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <!-- Left: image preview -->
+  <div class="bg-white rounded shadow p-3">
+    {% if doc and doc.thumbnail_path %}
+      {% set static_rel = doc.thumbnail_path.split('static/')[-1] %}
+      <img src="{{ url_for('static', filename=static_rel) }}" alt="document" class="w-full rounded">
+      <p class="text-xs text-gray-500 mt-2 break-all">Source: {{ url_for('static', filename=doc.file_path.split('static/')[-1]) if 'static/' in doc.file_path else doc.file_path }}</p>
+    {% else %}
+      <div class="p-8 text-gray-500">No preview available</div>
+    {% endif %}
+  </div>
+
+  <!-- Right: form -->
+  <form method="post" action="{{ url_for('uploads.confirm') }}" class="bg-white rounded shadow p-4 space-y-3" id="confirmForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="document_id" value="{{ doc.id }}">
+    <input type="hidden" name="currency" value="ZAR">
+
+    <div>
+      <label class="text-sm block mb-1">Date</label>
+      <input type="date" name="entry_date" class="border p-2 w-full rounded"
+             value="{{ parsed.get('entry_date','') }}">
+    </div>
+
+    <div>
+      <label class="text-sm block mb-1">Supplier</label>
+      <input name="supplier_name" class="border p-2 w-full rounded"
+             value="{{ parsed.get('supplier_name','') }}">
+    </div>
+
+    <div>
+      <label class="text-sm block mb-1">Supplier VAT Number</label>
+      <input name="supplier_vat_number" class="border p-2 w-full rounded"
+             value="{{ parsed.get('supplier_vat_number','') }}">
+    </div>
+
+    <div>
+      <label class="text-sm block mb-1">Reference / Till / Invoice #</label>
+      <input name="reference_no" class="border p-2 w-full rounded"
+             value="{{ parsed.get('reference_no','') }}">
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div>
+        <label class="text-sm block mb-1">Subtotal (R)</label>
+        <input name="subtotal" type="number" step="0.01" class="border p-2 w-full rounded"
+               value="{{ parsed.get('subtotal','') }}" inputmode="decimal">
+      </div>
+      <div>
+        <label class="text-sm block mb-1">VAT Rate</label>
+        <input id="vat_rate" name="vat_rate" type="number" step="0.01" class="border p-2 w-full rounded"
+               value="{{ parsed.get('vat_rate',0.15) }}" inputmode="decimal">
+      </div>
+      <div>
+        <label class="text-sm block mb-1">VAT Amount (R)</label>
+        <input name="vat_amount" type="number" step="0.01" class="border p-2 w-full rounded"
+               value="{{ parsed.get('vat_amount','') }}" inputmode="decimal">
+      </div>
+    </div>
+
+    <div>
+      <label class="text-sm block mb-1">Total (R)</label>
+      <input id="total_amount" name="total_amount" type="number" step="0.01" class="border p-2 w-full rounded"
+             value="{{ parsed.get('total_amount','') }}" inputmode="decimal">
+    </div>
+
+    <label class="flex items-center gap-2">
+      <input type="checkbox" id="vat_included" name="vat_included" checked>
+      VAT included (15%)
     </label>
-  {% endfor %}
-  <button class="bg-green-600 text-white px-4 py-2 rounded col-span-full">Save</button>
-</form>
+
+    <div>
+      <label class="text-sm block mb-1">Payment Method</label>
+      <select name="payment_method" class="border p-2 w-full rounded">
+        {% set pm = parsed.get('payment_method','unknown') %}
+        <option value="unknown" {{ 'selected' if pm=='unknown' else '' }}>Unknown</option>
+        <option value="cash" {{ 'selected' if pm=='cash' else '' }}>Cash</option>
+        <option value="card" {{ 'selected' if pm=='card' else '' }}>Card</option>
+        <option value="eft"  {{ 'selected' if pm=='eft'  else '' }}>EFT</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="text-sm block mb-1">Category</label>
+      <input name="category" class="border p-2 w-full rounded"
+             value="{{ parsed.get('category','') }}">
+    </div>
+
+    <div>
+      <label class="text-sm block mb-1">Notes</label>
+      <textarea name="notes" rows="3" class="border p-2 w-full rounded">{{ parsed.get('notes','') }}</textarea>
+    </div>
+
+    <div class="pt-2">
+      <button class="bg-green-600 text-white px-4 py-2 rounded">Save</button>
+    </div>
+  </form>
+</div>
+
+<script>
+// Simple VAT auto-calc if "VAT included" is ticked.
+// Works with commas or dots in inputs.
+function parseNum(v) {
+  if (v === null || v === undefined) return NaN;
+  return parseFloat(String(v).replace(',', '.'));
+}
+function toMoney(n) {
+  if (!isFinite(n)) return '';
+  return (Math.round(n * 100) / 100).toFixed(2);
+}
+const totalEl = document.getElementById('total_amount');
+const rateEl  = document.getElementById('vat_rate');
+const chkIncl = document.getElementById('vat_included');
+const form    = document.getElementById('confirmForm');
+
+function recalc() {
+  const total = parseNum(totalEl.value);
+  const rate  = parseNum(rateEl.value);
+  if (!chkIncl.checked || !isFinite(total) || !isFinite(rate)) return;
+  const base = total / (1 + rate);
+  const vat  = total - base;
+  form.elements['subtotal'].value   = toMoney(base);
+  form.elements['vat_amount'].value = toMoney(vat);
+}
+
+totalEl?.addEventListener('input', recalc);
+rateEl?.addEventListener('input', recalc);
+chkIncl?.addEventListener('change', recalc);
+</script>
 {% endblock %}

@@ -14,7 +14,9 @@
     <a href="/journal">Journal</a>
     <a href="/reports/monthly">Reports</a>
     <a href="/rules">Rules</a>
-    <form class="ml-auto" action="/auth/logout" method="post">
+
+    <form class="ml-auto" action="{{ url_for('auth.logout') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="text-red-600">Logout</button>
     </form>
   </div>
