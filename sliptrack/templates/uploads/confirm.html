@@ -15,17 +15,24 @@
   <div class="lg:col-span-1">
     <div class="bg-white shadow rounded-lg overflow-hidden">
       {% if doc and doc.thumbnail_path %}
-        {% set static_rel = doc.thumbnail_path.split('static/')[-1] %}
-        <img src="{{ url_for('static', filename=static_rel) }}" alt="Document preview" class="w-full h-auto object-contain">
+        <img src="{{ url_for('uploads.serve_data', file_path=doc.thumbnail_path) }}" alt="Document preview" class="w-full h-auto object-contain">
+      {% elif doc and doc.file_path and doc.file_path.endswith('.pdf') %}
+        <div class="p-8 text-center text-gray-500">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p class="mt-2">PDF Document</p>
+          <p class="text-sm">No preview available</p>
+        </div>
       {% else %}
         <div class="p-8 text-center text-gray-500">
           <p>No preview available</p>
         </div>
       {% endif %}
     </div>
-    {% if doc %}
+    {% if doc and doc.file_path %}
     <p class="text-xs text-gray-500 mt-2 break-all">
-        Source: <a href="{{ url_for('static', filename=doc.file_path.split('static/')[-1]) if 'static/' in doc.file_path else doc.file_path }}" target="_blank" class="hover:underline">{{ doc.file_path.split('/')[-1] }}</a>
+        Source: <a href="{{ url_for('uploads.serve_data', file_path=doc.file_path) }}" target="_blank" class="hover:underline">{{ doc.file_path.split('/')[-1] }}</a>
     </p>
     {% endif %}
   </div>

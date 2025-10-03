@@ -24,44 +24,47 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const statusContainer = document.getElementById('status-container');
-    const taskId = statusContainer.dataset.taskId;
     const docId = statusContainer.dataset.docId;
 
-    if (!taskId) {
-        console.error('No task ID found.');
+    if (!docId) {
+        console.error('No document ID found.');
         return;
     }
 
     const pollStatus = () => {
-        fetch(`/task_status/${taskId}`)
-            .then(response => response.json())
+        fetch(`/uploads/doc_status/${docId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
-                if (data.state === 'SUCCESS') {
-                    // Task is done, redirect to the confirmation page
+                if (data.redirect_url) {
                     window.location.href = data.redirect_url;
-                } else if (data.state === 'FAILURE') {
-                    // Task failed, show an error message
+                } else if (data.doc_status === 'ocr_failed') {
                     document.getElementById('spinner').classList.add('hidden');
                     const errorDiv = document.getElementById('error-message');
                     const errorText = document.getElementById('error-text');
-                    errorText.textContent = data.error || 'An unknown error occurred during processing.';
+                    errorText.textContent = data.error || 'Document processing failed. The image may be blurry or unreadable.';
                     errorDiv.classList.remove('hidden');
+                } else if (data.doc_status === 'processing' || data.doc_status === 'pending') {
+                    setTimeout(pollStatus, 2500); // Poll again
                 } else {
-                    // Task is still pending or in progress, poll again after 2 seconds
-                    setTimeout(pollStatus, 2000);
+                    // Unhandled status, show a generic error
+                    throw new Error(`Unhandled document status: ${data.doc_status}`);
                 }
             })
             .catch(err => {
-                console.error('Error polling task status:', err);
+                console.error('Error polling document status:', err);
                 document.getElementById('spinner').classList.add('hidden');
                 const errorDiv = document.getElementById('error-message');
                 const errorText = document.getElementById('error-text');
-                errorText.textContent = 'Could not check the processing status. Please check back later.';
+                errorText.textContent = 'Could not check the processing status. Please refresh the page or check the journal later.';
                 errorDiv.classList.remove('hidden');
             });
     };
 
-    // Start polling
     pollStatus();
 });
 </script>

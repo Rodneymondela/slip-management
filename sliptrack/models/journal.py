@@ -3,9 +3,9 @@ from ..extensions import db
 
 class JournalEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     document_id = db.Column(db.Integer, db.ForeignKey('document.id'))
-    entry_date = db.Column(db.Date, nullable=False)
+    entry_date = db.Column(db.Date, nullable=False, index=True)
     supplier_name = db.Column(db.String(128))
     supplier_vat_number = db.Column(db.String(32))
     reference_no = db.Column(db.String(64))
