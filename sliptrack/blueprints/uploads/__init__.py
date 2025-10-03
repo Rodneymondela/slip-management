@@ -1,2 +1,2 @@
 from flask import Blueprint
-uploads_bp = Blueprint('uploads', __name__, url_prefix='/upload')
+uploads_bp = Blueprint('uploads', __name__, url_prefix='/uploads')

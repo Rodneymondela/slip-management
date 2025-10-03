@@ -68,13 +68,19 @@ class OcrAdapter:
         h, w = gray.shape
         return cv2.resize(gray, (int(w * factor), int(h * factor)), interpolation=cv2.INTER_CUBIC)
 
-    def preprocess(self, image_path: str) -> np.ndarray:
-        gray = self._to_gray(self._read_image(image_path))
+    def preprocess_image(self, img: np.ndarray) -> np.ndarray:
+        """Runs the full preprocessing pipeline on a BGR numpy array."""
+        gray = self._to_gray(img)
         den = self._denoise(gray)
         desk = self._deskew(den)
         cla = self._clahe(desk)
         th = self._adaptive(cla)
         return th
+
+    def preprocess(self, image_path: str) -> np.ndarray:
+        """Convenience method to read an image from a path and preprocess it."""
+        img = self._read_image(image_path)
+        return self.preprocess_image(img)
 
     # ---------- OCR ----------
 

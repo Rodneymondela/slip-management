@@ -28,11 +28,11 @@ def find_tesseract_cmd():
 class BaseConfig:
     TESSERACT_CMD = find_tesseract_cmd()
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret")
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///sliptrack.db")
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///../instance/sliptrack.db")
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "sliptrack/static/uploads")
-    THUMB_FOLDER = os.environ.get("THUMB_FOLDER", "sliptrack/static/thumbs")
+    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "instance/uploads")
+    THUMB_FOLDER = os.environ.get("THUMB_FOLDER", "instance/thumbs")
     MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB
     WTF_CSRF_TIME_LIMIT = None
     SESSION_COOKIE_SAMESITE = "Lax"
