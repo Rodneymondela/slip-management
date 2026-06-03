@@ -20,4 +20,4 @@ COPY . .
 ENV FLASK_APP=sliptrack.app:create_app
 
 # Run DB migrations then start Gunicorn (web service)
-CMD ["sh", "-c", "flask db upgrade && gunicorn 'sliptrack.app:create_app()' --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120"]
+CMD ["sh", "-c", "flask db upgrade && gunicorn 'sliptrack.app:create_app()' --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 120 --log-level debug"]
