@@ -2,7 +2,7 @@
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "python -c 'from wsgi import app; print(\"APP IMPORT OK\")' && flask db upgrade && gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --log-level debug 2>&1"
+startCommand = "python -c 'from wsgi import app; print(\"APP IMPORT OK\")' && gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --log-level debug 2>&1"
 healthcheckPath = "/"
 healthcheckTimeout = 120
 restartPolicyType = "on_failure"
