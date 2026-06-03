@@ -18,7 +18,7 @@ def process_ocr(self, document_id: int):
     Celery task to perform OCR on a document. It handles both PDF and image files,
     applies preprocessing, and updates the document status in the database.
     """
-    doc = Document.query.get(document_id)
+    doc = db.session.get(Document, document_id)
     if not doc:
         logger.error(f"Document with ID {document_id} not found.")
         return
@@ -80,7 +80,7 @@ def process_ocr(self, document_id: int):
             exc_info=True,
         )
         db.session.rollback()
-        doc = Document.query.get(document_id) # Re-fetch doc in case session is expired
+        doc = db.session.get(Document, document_id)
         if doc:
             doc.status = "ocr_failed"
             # Keep task_id for debugging purposes on failure

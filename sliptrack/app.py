@@ -4,7 +4,7 @@ from .extensions import db, migrate, login_manager, csrf, limiter, celery_app
 from .config import get_config
 import os
 import pytesseract
-from datetime import datetime
+from datetime import datetime, date
 
 
 def create_app(config_name=None):
@@ -45,7 +45,7 @@ def create_app(config_name=None):
     def load_user(user_id):
         # Since the user_id is just the primary key, we can use the query function
         from .models.user import User
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     csrf.init_app(app)
     limiter.init_app(app)
@@ -77,7 +77,29 @@ def create_app(config_name=None):
 
     @app.route("/")
     def dashboard():
-        return render_template("dashboard.html")
+        from flask_login import current_user
+        from sqlalchemy import extract
+        from .models.journal import JournalEntry
+
+        stats = {"total": 0.0, "vat": 0.0, "count": 0, "recent": []}
+        if current_user.is_authenticated:
+            today = date.today()
+            entries = JournalEntry.query.filter(
+                JournalEntry.user_id == current_user.id,
+                extract('year', JournalEntry.entry_date) == today.year,
+                extract('month', JournalEntry.entry_date) == today.month,
+            ).all()
+            stats["total"] = float(sum(e.total_amount or 0 for e in entries))
+            stats["vat"] = float(sum(e.vat_amount or 0 for e in entries))
+            stats["count"] = len(entries)
+            stats["recent"] = (
+                JournalEntry.query
+                .filter_by(user_id=current_user.id)
+                .order_by(JournalEntry.entry_date.desc())
+                .limit(5)
+                .all()
+            )
+        return render_template("dashboard.html", stats=stats)
 
     return app
 

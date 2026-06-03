@@ -13,14 +13,22 @@ def monthly():
     if not month:
         month = date.today().strftime('%Y-%m')
     y, m = map(int, month.split('-'))
-    q = JournalEntry.query.filter(JournalEntry.user_id==current_user.id,
-                                  extract('year', JournalEntry.entry_date)==y,
-                                  extract('month', JournalEntry.entry_date)==m)
-    total = sum((e.total_amount or 0) for e in q)
-    vat_total = sum((e.vat_amount or 0) for e in q)
-    # per-category
+    entries = JournalEntry.query.filter(
+        JournalEntry.user_id == current_user.id,
+        extract('year', JournalEntry.entry_date) == y,
+        extract('month', JournalEntry.entry_date) == m,
+    ).all()
+    total = sum((e.total_amount or 0) for e in entries)
+    vat_total = sum((e.vat_amount or 0) for e in entries)
     cat_totals = {}
-    for e in q:
+    for e in entries:
         cat = e.category or 'Uncategorized'
         cat_totals[cat] = cat_totals.get(cat, 0) + float(e.total_amount or 0)
-    return render_template('reports/monthly.html', month=month, total=total, vat_total=vat_total, cat_totals=cat_totals)
+    return render_template(
+        'reports/monthly.html',
+        month=month,
+        total=total,
+        vat_total=vat_total,
+        cat_totals=cat_totals,
+        entry_count=len(entries),
+    )

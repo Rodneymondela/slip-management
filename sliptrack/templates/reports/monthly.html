@@ -1,20 +1,65 @@
 {% extends 'base.html' %}
+{% block title %}Monthly Report - SlipTrack{% endblock %}
+
 {% block content %}
-<h2 class="text-xl font-semibold mb-4">Monthly Report ({{ month }})</h2>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-  <div class="p-4 bg-white rounded shadow">Total incl. VAT: <b>R {{ '%.2f'|format(total) }}</b></div>
-  <div class="p-4 bg-white rounded shadow">VAT amount: <b>R {{ '%.2f'|format(vat_total) }}</b></div>
-  <div class="p-4 bg-white rounded shadow">Entries: <b>{{ cat_totals|length }}</b> categories</div>
+<div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+  <h2 class="text-2xl font-bold text-gray-900">Monthly Report</h2>
+  <form method="get" class="flex items-center gap-2">
+    <input type="month" name="month" value="{{ month }}" class="border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm focus:outline-none focus:ring-primary focus:border-primary">
+    <button type="submit" class="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Go</button>
+  </form>
 </div>
-<canvas id="catChart"></canvas>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+  <div class="p-5 bg-white rounded-lg shadow">
+    <p class="text-sm font-medium text-gray-500">Total incl. VAT</p>
+    <p class="mt-1 text-2xl font-semibold text-gray-900">R {{ '%.2f'|format(total) }}</p>
+  </div>
+  <div class="p-5 bg-white rounded-lg shadow">
+    <p class="text-sm font-medium text-gray-500">VAT Amount</p>
+    <p class="mt-1 text-2xl font-semibold text-gray-900">R {{ '%.2f'|format(vat_total) }}</p>
+  </div>
+  <div class="p-5 bg-white rounded-lg shadow">
+    <p class="text-sm font-medium text-gray-500">Entries</p>
+    <p class="mt-1 text-2xl font-semibold text-gray-900">{{ entry_count }}</p>
+  </div>
+</div>
+
+{% if cat_totals %}
+<div class="bg-white rounded-lg shadow p-5">
+  <h3 class="text-lg font-medium text-gray-900 mb-4">Spend by Category</h3>
+  <div style="position: relative; height: 300px;">
+    <canvas id="catChart"></canvas>
+  </div>
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">No entries for this month.</div>
+{% endif %}
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const labels = {{ cat_totals.keys()|list|tojson }};
-const data = {{ cat_totals.values()|list|tojson }};
-new Chart(document.getElementById('catChart'), {
-  type: 'bar',
-  data: { labels, datasets: [{ label: 'Total by Category (R)', data }] },
-  options: { responsive: true, maintainAspectRatio: false, }
-});
+const data   = {{ cat_totals.values()|list|tojson }};
+if (labels.length) {
+  new Chart(document.getElementById('catChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Total by Category (R)',
+        data,
+        backgroundColor: 'rgba(30, 64, 175, 0.7)',
+        borderColor: 'rgba(30, 64, 175, 1)',
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } },
+    }
+  });
+}
 </script>
 {% endblock %}

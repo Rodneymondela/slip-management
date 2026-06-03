@@ -1,23 +1,106 @@
 {% extends 'base.html' %}
+{% block title %}Entry #{{ entry.id }} - SlipTrack{% endblock %}
+
 {% block content %}
-<h2 class="text-xl font-semibold mb-4">Entry #{{ entry.id }}</h2>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div class="bg-white rounded shadow p-2">
-    {% if doc and doc.thumbnail_path %}
-      <img src="/{{ doc.thumbnail_path }}" alt="document" class="w-full">
-    {% else %}
-      <div class="p-8 text-gray-500">No image</div>
-    {% endif %}
+<div class="flex items-center justify-between mb-6">
+  <h2 class="text-2xl font-bold text-gray-900">Entry #{{ entry.id }}</h2>
+  <a href="{{ url_for('journal.list_journal') }}" class="text-sm text-primary hover:text-blue-800">&larr; Back to Journal</a>
+</div>
+
+<div class="lg:grid lg:grid-cols-3 lg:gap-8">
+  <div class="lg:col-span-1">
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+      {% if doc and doc.thumbnail_path %}
+        {% set static_rel = doc.thumbnail_path.split('static/')[-1] %}
+        <img src="{{ url_for('static', filename=static_rel) }}" alt="Document preview" class="w-full h-auto object-contain">
+      {% else %}
+        <div class="p-8 text-center text-gray-500">No preview available</div>
+      {% endif %}
+    </div>
   </div>
-  <div class="bg-white rounded shadow p-4">
-    <form method="post" action="{{ url_for('journal.detail', entry_id=entry.id) }}">
+
+  <div class="mt-8 lg:mt-0 lg:col-span-2">
+    <form method="post" action="{{ url_for('journal.detail', entry_id=entry.id) }}" class="space-y-6">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <label class="block mb-2">Supplier
-        <input name="supplier_name" value="{{ entry.supplier_name }}" class="border p-2 w-full">
-      </label>
-      <button class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+
+      <div class="bg-white shadow sm:rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Supplier &amp; Date</h3>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
+            <div class="sm:col-span-3">
+              <label for="supplier_name" class="block text-sm font-medium text-gray-700">Supplier</label>
+              <input type="text" name="supplier_name" id="supplier_name" value="{{ entry.supplier_name or '' }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+            </div>
+            <div class="sm:col-span-3">
+              <label for="entry_date" class="block text-sm font-medium text-gray-700">Date</label>
+              <input type="date" name="entry_date" id="entry_date" value="{{ entry.entry_date.isoformat() }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+            </div>
+            <div class="sm:col-span-3">
+              <label for="reference_no" class="block text-sm font-medium text-gray-700">Reference / Invoice #</label>
+              <input type="text" name="reference_no" id="reference_no" value="{{ entry.reference_no or '' }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+            </div>
+            <div class="sm:col-span-3">
+              <label for="supplier_vat_number" class="block text-sm font-medium text-gray-700">Supplier VAT Number</label>
+              <input type="text" name="supplier_vat_number" id="supplier_vat_number" value="{{ entry.supplier_vat_number or '' }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white shadow sm:rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Financials</h3>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
+            <div class="sm:col-span-2">
+              <label for="subtotal" class="block text-sm font-medium text-gray-700">Subtotal (R)</label>
+              <input type="number" name="subtotal" id="subtotal" value="{{ entry.subtotal or '' }}" step="0.01" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+            </div>
+            <div class="sm:col-span-2">
+              <label for="vat_amount" class="block text-sm font-medium text-gray-700">VAT Amount (R)</label>
+              <input type="number" name="vat_amount" id="vat_amount" value="{{ entry.vat_amount or '' }}" step="0.01" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+            </div>
+            <div class="sm:col-span-2">
+              <label for="total_amount" class="block text-sm font-medium text-gray-700">Total (R)</label>
+              <input type="number" name="total_amount" id="total_amount" value="{{ entry.total_amount or '' }}" step="0.01" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white shadow sm:rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Categorization</h3>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
+            <div class="sm:col-span-3">
+              <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+              <input type="text" name="category" id="category" value="{{ entry.category or '' }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+            </div>
+            <div class="sm:col-span-3">
+              <label for="payment_method" class="block text-sm font-medium text-gray-700">Payment Method</label>
+              <select id="payment_method" name="payment_method" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md">
+                <option value="unknown" {{ 'selected' if entry.payment_method == 'unknown' }}>Unknown</option>
+                <option value="cash"    {{ 'selected' if entry.payment_method == 'cash' }}>Cash</option>
+                <option value="card"    {{ 'selected' if entry.payment_method == 'card' }}>Card</option>
+                <option value="eft"     {{ 'selected' if entry.payment_method == 'eft' }}>EFT</option>
+              </select>
+            </div>
+            <div class="sm:col-span-6">
+              <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
+              <textarea id="notes" name="notes" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">{{ entry.notes or '' }}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-3">
+        <a href="{{ url_for('journal.list_journal') }}" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">
+          Cancel
+        </a>
+        <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+          Save Changes
+        </button>
+      </div>
     </form>
   </div>
 </div>
 {% endblock %}
-
