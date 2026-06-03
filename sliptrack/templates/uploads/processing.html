@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const pollStatus = () => {
-        fetch(`/upload/doc_status/${docId}`)
+        fetch(`/uploads/doc_status/${docId}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);

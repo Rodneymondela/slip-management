@@ -40,7 +40,7 @@ def test_duplicate_journal_entry(client, db_session):
         "vat_rate": "0.15",
     }
 
-    response = client.post("/upload/confirm", data=form_data, follow_redirects=True)
+    response = client.post("/uploads/confirm", data=form_data, follow_redirects=True)
 
     assert response.status_code == 200
     assert b"Duplicate Warning" in response.data
