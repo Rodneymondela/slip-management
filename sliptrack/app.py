@@ -75,6 +75,10 @@ def create_app(config_name=None):
     app.register_blueprint(reports_bp)
     app.register_blueprint(rules_bp)
 
+    @app.route("/health")
+    def health():
+        return "OK", 200
+
     @app.route("/")
     def dashboard():
         from flask_login import current_user
